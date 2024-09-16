@@ -1,98 +1,80 @@
-import React, { useRef, useState } from 'react';
-import { ScrollView, View, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Categories from '../(menudependencies)/Categories'; 
-import MenuItems from '../(menudependencies)/menuitems';
-import { items } from '../(menudependencies)/menuindex';
-import SlidingImages from '../(menudependencies)/slidingimages';
-import FilterButtons from '../(menudependencies)/filterbuttons'; // Move FilterButtons here
+import React, { useState } from 'react';
+import { View, TextInput, Button, Text } from 'react-native';
+import { initializeApp } from 'firebase/app';
+import { initializeAuth, getReactNativePersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, getAuth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Menu = () => {
-  const scrollViewRef = useRef(null);
-
-  // Create references for each unique category section
-  const sectionRefs = items.reduce((acc, item) => {
-    if (!acc[item.type]) acc[item.type] = React.createRef();
-    return acc;
-  }, {});
-
-  // Scroll to the section when a category button is clicked
-  const scrollToSection = (type) => {
-    const sectionRef = sectionRefs[type];
-    if (sectionRef?.current) {
-      sectionRef.current.measureLayout(
-        scrollViewRef.current,
-        (x, y) => {
-          scrollViewRef.current.scrollTo({ y, animated: true });
-        }
-      );
-    }
-  };
-
-  // Get unique categories
-  const uniqueCategories = [...new Set(items.map(item => item.type))];
-
-  // State for managing filtered items
-  const [filteredItems, setFilteredItems] = useState(items);
-  const [filterApplied, setFilterApplied] = useState(false);
-
-  const filterByPrice = () => {
-    if (!filterApplied) {
-      const sortedItems = [...items].sort((a, b) => a.price - b.price);
-      setFilteredItems(sortedItems);
-      setFilterApplied(true);
-    } else {
-      resetFilters(); // Reset items when filter is clicked again
-    }
-  };
-
-  const filterByRating = () => {
-    if (!filterApplied) {
-      const sortedItems = [...items].sort((a, b) => b.rating - a.rating);
-      setFilteredItems(sortedItems);
-      setFilterApplied(true);
-    } else {
-      resetFilters(); // Reset items when filter is clicked again
-    }
-  };
-
-  const resetFilters = () => {
-    setFilteredItems(items); // Reset to original items
-    setFilterApplied(false);
-  };
-
-  const images = [
-    require('../(menudependencies)/menuimgs/coffeeroasted(2).jpg'), // Adjust the pathcoffeeroasted(2)
-    require('../(menudependencies)/menuimgs/burger2.jpg'), // Adjust the path
-    // Add more images as needed
-  ];
-
-  return (
-    <SafeAreaView className="bg-black flex-1">
-      <ScrollView 
-        ref={scrollViewRef} 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
-        <SlidingImages images={images} />
-        <View className="color-main pl-5 fs-5">
-          <Text className="color-main text-lg">What's on your mind?</Text>
-        </View>
-        <Categories scrollToSection={scrollToSection} />
-
-        {/* Filter Buttons here */}
-        <FilterButtons filterByPrice={filterByPrice} filterByRating={filterByRating} />
-
-        {/* Render Menu Items by Category */}
-        {uniqueCategories.map(category => (
-          <View  className="pl-3"key={category} ref={sectionRefs[category]}>
-            <MenuItems items={filteredItems.filter(item => item.type === category)} />
-          </View>
-        ))}
-
-      </ScrollView>
-    </SafeAreaView>
-  );
+// Your Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCzjPaZvok641LqNm6BGGkeKXX4L3erhRE",
+  authDomain: "kafe-d5023.firebaseapp.com",
+  projectId: "kafe-d5023",
+  storageBucket: "kafe-d5023.appspot.com",
+  messagingSenderId: "895272566374",
+  appId: "1:895272566374:web:d4576abdd902732ce377a7",
+  measurementId: "G-JJ14JEM3MM"
 };
 
-export default Menu;
+// Initialize Firebase app
+const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase Auth with persistence using AsyncStorage
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+
+export default function App() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  // Sign up new user
+  const handleSignUp = async () => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      setMessage(`Signed up successfully! User ID: ${user.uid}`);
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  // Sign in existing user
+  const handleSignIn = async () => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      setMessage(`Signed in successfully! User ID: ${user.uid}`);
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text>Email:</Text>
+      <TextInput
+        style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, padding: 5 }}
+        placeholder="Enter email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+
+      <Text>Password:</Text>
+      <TextInput
+        style={{ height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, padding: 5 }}
+        placeholder="Enter password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={true}
+      />
+
+      <Button title="Sign Up" onPress={handleSignUp} />
+      <Button title="Sign In" onPress={handleSignIn} />
+
+      {message ? <Text>{message}</Text> : null}
+    </View>
+  );
+}
